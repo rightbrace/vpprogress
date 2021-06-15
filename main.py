@@ -17,6 +17,9 @@ WHITE = (255, 255, 255)
 SPAWN_RATE = 360 
 FRAME_RATE = 60
 
+REG_SPEED = 2 
+SLOW_SPEED = 1 
+
 GAME_WINDOW = display.set_mode(WINDOW_RES) 
 display.set_caption('Attack of the Vampire Pizzas!') 
 
@@ -31,7 +34,7 @@ VAMPIRE_PIZZA = transform.scale(pizza_surf, (WIDTH, HEIGHT))
 class VampireSprite(sprite.Sprite): 
     def __init__(self): 
         super().__init__() 
-        self.speed = 2 
+        self.speed = REG_SPEED 
         self.lane = randint(0, 4) 
         all_vampires.add(self) 
         self.image = VAMPIRE_PIZZA.copy() 
@@ -70,9 +73,40 @@ while game_running:
     for event in pygame.event.get(): 
         if event.type == QUIT: 
             game_running = False 
+        elif event.type == MOUSEBUTTONDOWN: 
+            coordinates = mouse.get_pos() 
+            x = coordinates[0] 
+            y = coordinates[1] 
+            tile_y = y//100 
+            tile_x = x//100 
+            tile_grid[tile_y][tile_x].effect = True
 
     if randint(1, SPAWN_RATE) == 1: 
         VampireSprite() 
+
+    for vampire in all_vampires: 
+        tile_row = tile_grid[vampire.rect.y//100] 
+        vamp_left_side = vampire.rect.x//100 
+        vamp_right_side = (vampire.rect.x+ vampire.rect.width)//100 
+
+        if 0 <= vamp_left_side <= 10: 
+            left_tile = tile_row[vamp_left_side] 
+        else: 
+            left_tile = None 
+
+        if 0 <= vamp_right_side <= 10: 
+            right_tile = tile_row[vamp_right_side] 
+        else: 
+            right_tile = None 
+
+        if bool(left_tile) and left_tile.effect: 
+            if right_tile != left_tile: 
+                vampire.speed = SLOW_SPEED 
+
+        if vampire.rect.x <= 0: 
+            vampire.kill() 
+
+     
 
     for vampire in all_vampires: 
         vampire.update(GAME_WINDOW) 
