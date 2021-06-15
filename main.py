@@ -35,6 +35,18 @@ pizza_img = image.load('vampire.png')
 pizza_surf = Surface.convert_alpha(pizza_img) 
 VAMPIRE_PIZZA = transform.scale(pizza_surf, (WIDTH, HEIGHT)) 
 
+garlic_img = image.load('garlic.png') 
+garlic_surf = Surface.convert_alpha(garlic_img) 
+GARLIC = transform.scale(garlic_surf, (WIDTH, HEIGHT)) 
+
+cutter_img = image.load('pizzacutter.png') 
+cutter_surf = Surface.convert_alpha(cutter_img) 
+CUTTER = transform.scale(cutter_surf, (WIDTH, HEIGHT)) 
+
+pepperoni_img = image.load('pepperoni.png') 
+pepperoni_surf = Surface.convert_alpha(pepperoni_img) 
+PEPPERONI = transform.scale(pepperoni_surf, (WIDTH, HEIGHT)) 
+
 class VampireSprite(sprite.Sprite): 
     def __init__(self): 
         super().__init__() 
@@ -44,11 +56,23 @@ class VampireSprite(sprite.Sprite):
         self.image = VAMPIRE_PIZZA.copy() 
         y = 50 + self.lane * 100 
         self.rect = self.image.get_rect(center = (1100, y)) 
+        self.health = 100
 
-    def update(self, game_window): 
+    def update(self, game_window, counters): 
         game_window.blit(BACKGROUND, (self.rect.x, self.rect.y), self.rect) 
         self.rect.x -= self.speed 
         game_window.blit(self.image, (self.rect.x, self.rect.y))
+        if self.health <= 0 or self.rect.x <= 100: 
+            self.kill() 
+        else: 
+            game_window.blit(self.image, (self.rect.x, self.rect.y)) 
+
+    def attack(self, tile): 
+        if tile.trap == SLOW: 
+            self.speed = SLOW_SPEED 
+
+        if tile.trap == DAMAGE: 
+            self.health -= 1 
 
 class Counters(object): 
     def __init__(self, pizza_bucks, buck_rate, buck_booster): 
@@ -78,14 +102,73 @@ class Counters(object):
         self.increment_bucks() 
         self.draw_bucks(game_window)          
 
+class Trap(object): 
+    def __init__(self, trap_kind, cost, trap_img): 
+        self.trap_kind = trap_kind 
+        self.cost = cost 
+        self.trap_img = trap_img 
+
+class TrapApplicator(object): 
+    def __init__(self): 
+        self.selected = None 
+    
+    def select_trap(self, trap): 
+        if trap.cost <= counters.pizza_bucks: 
+            self.selected = trap 
+
+    def select_tile(self, tile, counters): 
+        self.selected = tile.set_trap(self.selected, counters)  
+
 class BackgroundTile(sprite.Sprite): 
     def __init__(self, rect): 
         super().__init__() 
         self.effect = False 
         self.rect = rect 
 
+class PlayTile(BackgroundTile): 
+    def set_trap(self, trap, counters): 
+        if bool(trap) and not bool(self.trap): 
+            counters.pizza_bucks -= trap.cost 
+            self.trap = trap 
+            if trap == EARN: 
+                counters.buck_booster += 1 
+        return None 
+
+    def draw_trap(self, game_window, trap_applicator): 
+        if bool(self.trap): 
+            game_window.blit(self.trap.trap_img, (self.rect.x, self.rect.y)) 
+
+ 
+
+class ButtonTile(BackgroundTile):   
+    def set_trap(self, trap, counters): 
+        if counters.pizza_bucks >= self.trap.cost: 
+            return self.trap 
+        else: 
+            return None 
+
+    def draw_trap(self, game_window, trap_applicator): 
+        if bool(trap_applicator.selected): 
+            if trap_applicator.selected == self.trap: 
+                draw.rect(game_window, (238, 190, 47), (self.rect.x, self.rect.y, WIDTH, HEIGHT), 5) 
+
+ 
+
+class InactiveTile(BackgroundTile): 
+    def set_trap(self, trap, counters): 
+        return None 
+
+    def draw_trap(self, game_window, trap_applicator): 
+        pass 
+
 all_vampires = sprite.Group() 
-counters = Counters(STARTING_BUCKS, BUCK_RATE, STARTING_BUCK_BOOSTER) 
+counters = Counters(STARTING_BUCKS, BUCK_RATE, STARTING_BUCK_BOOSTER)
+
+SLOW = Trap('SLOW', 5, GARLIC) 
+DAMAGE = Trap('DAMAGE', 3, CUTTER) 
+EARN = Trap('EARN', 7, PEPPERONI) 
+trap_applicator = TrapApplicator() 
+
 tile_grid = []
 
 tile_color = WHITE 
@@ -94,9 +177,25 @@ for row in range(6):
     tile_grid.append(row_of_tiles) 
     for column in range(11): 
         tile_rect = Rect(WIDTH * column, HEIGHT * row, WIDTH, HEIGHT) 
-        new_tile = BackgroundTile(tile_rect) 
+        if column <= 1: 
+            new_tile = InactiveTile(tile_rect) 
+        else: 
+            if row == 5: 
+                if 2<= column <= 4: 
+                    new_tile = ButtonTile(tile_rect) 
+                    new_tile.trap = [SLOW, DAMAGE, EARN][column - 2] 
+                else: 
+                    new_tile = InactiveTile(tile_rect) 
+            else: 
+                new_tile = PlayTile(tile_rect)  
+
         row_of_tiles.append(new_tile) 
-        draw.rect(BACKGROUND, tile_color, (WIDTH*column, HEIGHT*row, WIDTH, HEIGHT), 1) 
+        if row == 5 and 2 <= column <=4: 
+            BACKGROUND.blit(new_tile.trap.trap_img, (new_tile.rect.x, new_tile.rect.y)) 
+
+        if column != 0 and row != 5: 
+            if column != 1: 
+                draw.rect(BACKGROUND, tile_color, (WIDTH * column, HEIGHT * row, WIDTH, HEIGHT), 1)  
 
 GAME_WINDOW.blit(BACKGROUND, (0, 0)) 
 
@@ -111,10 +210,15 @@ while game_running:
             y = coordinates[1] 
             tile_y = y//100 
             tile_x = x//100 
-            tile_grid[tile_y][tile_x].effect = True
+            trap_applicator.select_tile(tile_grid[tile_y][tile_x], counters)
 
     if randint(1, SPAWN_RATE) == 1: 
         VampireSprite() 
+
+    for tile_row in tile_grid: 
+        for tile in tile_row: 
+            if bool(tile.trap): 
+                GAME_WINDOW.blit(BACKGROUND, (tile.rect.x, tile.rect.y), tile.rect)
 
     for vampire in all_vampires: 
         tile_row = tile_grid[vampire.rect.y//100] 
@@ -131,17 +235,20 @@ while game_running:
         else: 
             right_tile = None 
 
-        if bool(left_tile) and left_tile.effect: 
-            if right_tile != left_tile: 
-                vampire.speed = SLOW_SPEED 
-
-        if vampire.rect.x <= 0: 
-            vampire.kill() 
+        if bool(left_tile):
+            vampire.attack(left_tile)
+        if bool(right_tile):
+            if right_tile != left_tile:
+                vampire.attack(right_tile)
 
      
 
     for vampire in all_vampires: 
-        vampire.update(GAME_WINDOW) 
+        vampire.update(GAME_WINDOW, counters) 
+
+     for tile_row in tile_grid: 
+        for tile in tile_row: 
+            tile.draw_trap(GAME_WINDOW, trap_applicator) 
 
     counters.update(GAME_WINDOW)
     display.update() 
