@@ -44,13 +44,23 @@ class VampireSprite(sprite.Sprite):
         game_window.blit(self.image, (self.rect.x, self.rect.y))
          
 
-         
+class BackgroundTile(sprite.Sprite): 
+    def __init__(self, rect): 
+        super().__init__() 
+        self.effect = False 
+        self.rect = rect 
 
 all_vampires = sprite.Group() 
+tile_grid = []
 
 tile_color = WHITE 
 for row in range(6): 
+    row_of_tiles = [] 
+    tile_grid.append(row_of_tiles) 
     for column in range(11): 
+        tile_rect = Rect(WIDTH * column, HEIGHT * row, WIDTH, HEIGHT) 
+        new_tile = BackgroundTile(tile_rect) 
+        row_of_tiles.append(new_tile) 
         draw.rect(BACKGROUND, tile_color, (WIDTH*column, HEIGHT*row, WIDTH, HEIGHT), 1) 
 
 GAME_WINDOW.blit(BACKGROUND, (0, 0)) 
