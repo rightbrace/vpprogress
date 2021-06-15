@@ -3,6 +3,8 @@ from random import randint
 from pygame import * 
 pygame.init() 
 
+clock = time.Clock()
+
 WINDOW_WIDTH = 1100 
 WINDOW_HEIGHT = 600 
 WINDOW_RES = (WINDOW_WIDTH, WINDOW_HEIGHT) 
@@ -13,6 +15,7 @@ HEIGHT = 100
 WHITE = (255, 255, 255) 
 
 SPAWN_RATE = 360 
+FRAME_RATE = 60
 
 GAME_WINDOW = display.set_mode(WINDOW_RES) 
 display.set_caption('Attack of the Vampire Pizzas!') 
@@ -36,7 +39,10 @@ class VampireSprite(sprite.Sprite):
         self.rect = self.image.get_rect(center = (1100, y)) 
 
     def update(self, game_window): 
-        game_window.blit(self.image, (self.rect.x, self.rect.y)) 
+        game_window.blit(BACKGROUND, (self.rect.x, self.rect.y), self.rect) 
+        self.rect.x -= self.speed 
+        game_window.blit(self.image, (self.rect.x, self.rect.y))
+         
 
          
 
@@ -62,5 +68,6 @@ while game_running:
         vampire.update(GAME_WINDOW) 
 
     display.update() 
+    clock.tick(FRAME_RATE)
 
 pygame.quit() 
