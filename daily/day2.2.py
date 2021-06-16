@@ -1,40 +1,60 @@
+# Import the needed libraries
 import pygame
 from pygame import * 
+
+# Start pygame
 pygame.init() 
 
+# Non-adjustable constants
 WINDOW_WIDTH = 1100 
 WINDOW_HEIGHT = 600 
-WINDOW_RES = (WINDOW_WIDTH, WINDOW_HEIGHT) 
+TILE_SIZE = 100
 
-WIDTH = 100 
-HEIGHT = 100 
-
+# Adjustable constants
 WHITE = (255, 255, 255) 
 
-GAME_WINDOW = display.set_mode(WINDOW_RES) 
+DRAW_GRID = True
+
+# Set up the window with a size and name
+GAME_WINDOW = display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT)) 
 display.set_caption('Attack of the Vampire Pizzas!') 
 
-background_img = image.load('restaurant.jpg') 
-background_surf = Surface.convert_alpha(background_img) 
-BACKGROUND = transform.scale(background_surf, WINDOW_RES) 
+# load an image, if only a name is provided, assume that it is a square tile (because most objects in this game are)
+def load_img(filename, width=TILE_SIZE, height=TILE_SIZE):
+    img = image.load(filename)
+    surf = Surface.convert_alpha(img)
+    return transform.scale(surf, (width, height))
 
-pizza_img = image.load('vampire.png') 
-pizza_surf = Surface.convert_alpha(pizza_img) 
-VAMPIRE_PIZZA = transform.scale(pizza_surf, (WIDTH, HEIGHT)) 
+# Get the Rect() object corresponding to a given row and column
+def rect_from_position(row, col):
+    return Rect(TILE_SIZE * col, TILE_SIZE * row, TILE_SIZE, TILE_SIZE)
 
-tile_color = WHITE 
-for row in range(6): 
-    for column in range(11): 
-        draw.rect(BACKGROUND, tile_color, (WIDTH*column, HEIGHT*row, WIDTH, HEIGHT), 1) 
+# Load all of the assets
+BACKGROUND = load_img('restaurant.jpg', WINDOW_WIDTH, WINDOW_HEIGHT)
+VAMPIRE_PIZZA = load_img('vampire.png')
 
-GAME_WINDOW.blit(BACKGROUND, (0, 0)) 
-GAME_WINDOW.blit(VAMPIRE_PIZZA, (900, 400)) 
+# Set up the game tiles
+for row in range(6):
+    for column in range(11):
+        # IF we want the grid overlay (as decided by the DRAW_GRID constant), draw a box around some of the tiles
+        if DRAW_GRID: 
+                draw.rect(BACKGROUND, WHITE, rect_from_position(row, column), 1)  
 
+# Track the game state with a boolean. game_running means we are playing
 game_running = True 
 while game_running: 
+    # Handle clicking in the game, and trying to close the window
     for event in pygame.event.get(): 
         if event.type == QUIT: 
-            game_running = False 
+            # If we're trying to close the window, both the game and program stop
+            game_running = False
+    
+    # Draw some stuff
+    GAME_WINDOW.blit(BACKGROUND, (0, 0)) 
+    GAME_WINDOW.blit(VAMPIRE_PIZZA, (900, 400)) 
+
+    # Make the changes visible onscreen
     display.update() 
 
+# Tell pygame we're done
 pygame.quit() 
